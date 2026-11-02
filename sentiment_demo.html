@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tweet Sentiment — Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12151B;
+    --panel:#181C24;
+    --panel-2:#1E232C;
+    --line:#2A303B;
+    --text:#EDEEF0;
+    --text-dim:#8B93A1;
+    --text-faint:#5C6373;
+    --accent:#5B8DEF;
+    --pos:#4FA876;
+    --pos-bg:rgba(79,168,118,0.14);
+    --neg:#C4574B;
+    --neg-bg:rgba(196,87,75,0.14);
+    --neu:#C99A45;
+    --neu-bg:rgba(201,154,69,0.14);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:"Space Grotesk", system-ui, sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1080px;
+    margin:0 auto;
+    padding:56px 24px 72px;
+  }
+
+  header{
+    margin-bottom:44px;
+    max-width:640px;
+  }
+
+  header h1{
+    font-size:34px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    line-height:1.15;
+    margin:0 0 14px;
+  }
+
+  header p{
+    color:var(--text-dim);
+    font-size:16px;
+    line-height:1.6;
+    margin:0;
+    max-width:56ch;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+    align-items:start;
+  }
+
+  @media (max-width:820px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px;
+  }
+
+  .panel-label{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:0.04em;
+    color:var(--text-faint);
+    margin:0 0 16px;
+  }
+
+  textarea{
+    width:100%;
+    min-height:110px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--text);
+    font-family:"Space Grotesk", sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    padding:14px;
+    resize:vertical;
+  }
+
+  textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+
+  .sample-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:12px;
+  }
+
+  .sample-chip{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:6px 12px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .sample-chip:hover{
+    border-color:var(--accent);
+    color:var(--text);
+  }
+
+  button.analyze{
+    margin-top:16px;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    font-family:"Space Grotesk", sans-serif;
+    font-size:15px;
+    font-weight:600;
+    padding:11px 20px;
+    cursor:pointer;
+    transition:filter 0.15s ease;
+  }
+
+  button.analyze:hover{ filter:brightness(1.08); }
+  button.analyze:active{ filter:brightness(0.94); }
+  button.analyze:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+
+  .trace{
+    margin-top:22px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    line-height:1.85;
+    color:var(--text-dim);
+    border-top:1px solid var(--line);
+    padding-top:16px;
+    min-height:20px;
+  }
+
+  .trace .step-key{
+    color:var(--text-faint);
+  }
+
+  .trace .step-val{
+    color:var(--text);
+  }
+
+  .trace .placeholder{
+    color:var(--text-faint);
+  }
+
+  /* Result panel */
+  .verdict{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    margin-bottom:22px;
+  }
+
+  .verdict-label{
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+
+  .verdict-label.positive{ color:var(--pos); }
+  .verdict-label.negative{ color:var(--neg); }
+  .verdict-label.neutral{ color:var(--neu); }
+  .verdict-label.idle{ color:var(--text-faint); font-weight:500; }
+
+  .verdict-sub{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    color:var(--text-faint);
+  }
+
+  .bars{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:26px;
+  }
+
+  .bar-row{
+    display:grid;
+    grid-template-columns:74px 1fr 46px;
+    align-items:center;
+    gap:10px;
+  }
+
+  .bar-name{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--text-dim);
+  }
+
+  .bar-track{
+    height:8px;
+    background:var(--panel-2);
+    border-radius:100px;
+    overflow:hidden;
+  }
+
+  .bar-fill{
+    height:100%;
+    width:0%;
+    border-radius:100px;
+    transition:width 0.5s ease;
+  }
+
+  .bar-fill.positive{ background:var(--pos); }
+  .bar-fill.negative{ background:var(--neg); }
+  .bar-fill.neutral{ background:var(--neu); }
+
+  .bar-pct{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    text-align:right;
+  }
+
+  .highlight-box{
+    border-top:1px solid var(--line);
+    padding-top:18px;
+  }
+
+  .highlight-title{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12px;
+    letter-spacing:0.04em;
+    color:var(--text-faint);
+    margin:0 0 12px;
+  }
+
+  .highlighted-text{
+    font-size:16px;
+    line-height:1.75;
+    color:var(--text);
+  }
+
+  .tok-pos{
+    background:var(--pos-bg);
+    color:var(--pos);
+    border-radius:4px;
+    padding:1px 4px;
+  }
+
+  .tok-neg{
+    background:var(--neg-bg);
+    color:var(--neg);
+    border-radius:4px;
+    padding:1px 4px;
+  }
+
+  .tok-negated{
+    text-decoration:underline;
+    text-decoration-style:dotted;
+    text-decoration-color:var(--text-faint);
+  }
+
+  .legend{
+    display:flex;
+    gap:18px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11.5px;
+    color:var(--text-faint);
+  }
+
+  .dot{
+    width:9px;
+    height:9px;
+    border-radius:2px;
+  }
+
+  .dot.positive{ background:var(--pos); }
+  .dot.negative{ background:var(--neg); }
+  .dot.negated{ border:1px dotted var(--text-faint); }
+
+  .empty-state{
+    color:var(--text-faint);
+    font-size:14px;
+    line-height:1.6;
+    padding:6px 0 4px;
+  }
+
+  footer{
+    margin-top:36px;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+    color:var(--text-faint);
+    font-size:13px;
+    line-height:1.7;
+    max-width:70ch;
+  }
+
+  footer strong{ color:var(--text-dim); font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>What does the model actually see?</h1>
+    <p>Type a tweet and watch the same preprocessing pipeline from the notebook run on it, step by step, then see which words tipped the sentiment call.</p>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: input + pipeline trace -->
+    <div class="panel">
+      <p class="panel-label">input</p>
+      <textarea id="tweetInput" placeholder="Type or paste a tweet here...">I don't love the new update, it's honestly pretty disappointing.</textarea>
+
+      <div class="sample-row" id="sampleRow"></div>
+
+      <button class="analyze" id="analyzeBtn">Analyze tweet</button>
+
+      <div class="trace" id="trace">
+        <div class="placeholder">Trace will appear here once you analyze a tweet.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: verdict + highlighted tweet -->
+    <div class="panel">
+      <p class="panel-label">result</p>
+
+      <div class="verdict" id="verdictRow">
+        <span class="verdict-label idle" id="verdictLabel">Waiting for input</span>
+        <span class="verdict-sub" id="verdictSub"></span>
+      </div>
+
+      <div class="bars">
+        <div class="bar-row">
+          <span class="bar-name">positive</span>
+          <div class="bar-track"><div class="bar-fill positive" id="barPos"></div></div>
+          <span class="bar-pct" id="pctPos">—</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name">neutral</span>
+          <div class="bar-track"><div class="bar-fill neutral" id="barNeu"></div></div>
+          <span class="bar-pct" id="pctNeu">—</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name">negative</span>
+          <div class="bar-track"><div class="bar-fill negative" id="barNeg"></div></div>
+          <span class="bar-pct" id="pctNeg">—</span>
+        </div>
+      </div>
+
+      <div class="highlight-box">
+        <p class="highlight-title">matched words in your tweet</p>
+        <div class="highlighted-text" id="highlighted">
+          <span class="empty-state">Run an analysis to see which words the lexicon flagged.</span>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="dot positive"></span> positive word</div>
+          <div class="legend-item"><span class="dot negative"></span> negative word</div>
+          <div class="legend-item"><span class="dot negated"></span> flipped by negation</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <strong>How this differs from the notebook:</strong> the real project trains TF-IDF + Logistic Regression / SVM / Random Forest in scikit-learn, which can't run inside a browser. This page reimplements the same <code>clean_text()</code> cleaning steps in JavaScript, then scores the cleaned text with a small hand-built positive/negative word lexicon and simple negation handling (so "not good" flips instead of just matching "good"). It's a stand-in for live demo purposes — the notebook's trained model is the one the accuracy/F1 numbers in the report actually refer to.
+  </footer>
+</div>
+
+<script>
+  // ---- Mirrors NEGATIONS from the notebook's clean_text() ----
+  const NEGATIONS = new Set(["no","not","never","neither","nor","cannot","cant","wont","dont","didnt","isnt","wasnt"]);
+
+  // Small hand-built sentiment lexicon (word -> weight). Not exhaustive by design —
+  // this is a lightweight stand-in for the trained model, not a replacement for it.
+  const LEXICON = {
+    love:3, loved:3, loving:3, amazing:3, awesome:3, fantastic:3, excellent:3,
+    great:2, good:2, wonderful:3, happy:2, glad:2, pleased:2, best:3, perfect:3,
+    beautiful:2, brilliant:3, delight:2, delighted:2, thank:1, thanks:1, thankful:2,
+    enjoy:2, enjoyed:2, fun:2, nice:1, cool:1, impressive:2, recommend:2, satisfied:2,
+    hate:-3, hated:-3, terrible:-3, awful:-3, horrible:-3, worst:-3, bad:-2, sad:-2,
+    angry:-3, upset:-2, disappointed:-2, disappointing:-2, annoyed:-2, annoying:-2,
+    frustrated:-2, frustrating:-2, poor:-2, broken:-2, useless:-2, waste:-2, boring:-1,
+    slow:-1, worse:-2, fail:-2, failed:-2, failure:-2, sucks:-2, sucked:-2, disgusting:-3,
+    rude:-2, unhappy:-2, regret:-2, problem:-1, issue:-1, wrong:-1, sorry:-1
+  };
+
+  const STOPWORDS = new Set([
+    "a","an","the","and","or","but","of","to","in","on","for","with","is","are","was",
+    "were","be","been","being","it","its","this","that","these","those","i","you","he",
+    "she","we","they","them","my","your","his","her","our","their","at","as","by","from",
+    "so","if","then","than","too","very","just","about","into","over","after","before"
+  ]);
+
+  function stripDiacriticsLower(s){ return s.toLowerCase(); }
+
+  // Mirrors clean_text(): strip URLs, unwrap @/# symbols, drop HTML-ish tags,
+  // lowercase, expand a few contractions, strip non-letters, drop stopwords.
+  function cleanText(raw){
+    let t = raw;
+    t = t.replace(/https?:\/\/\S+|www\.\S+/g, " ");
+    t = t.replace(/[@#](\w+)/g, "$1");
+    t = t.replace(/<[^>]*>/g, " ");
+    t = t.toLowerCase();
+
+    const contractions = [
+      [/can't/g, "cannot"], [/won't/g, "will not"], [/n't/g, " not"],
+      [/'re/g, " are"], [/'m/g, " am"], [/'ll/g, " will"],
+      [/'ve/g, " have"], [/'d/g, " would"], [/'s/g, " is"]
+    ];
+    contractions.forEach(([pat, rep]) => { t = t.replace(pat, rep); });
+
+    t = t.replace(/[^a-z\s]/g, " ");
+    const tokensAll = t.split(/\s+/).filter(Boolean);
+    const kept = tokensAll.filter(w => (!STOPWORDS.has(w) || NEGATIONS.has(w)) && w.length > 1);
+    return { tokensAll, kept };
+  }
+
+  function scoreTokens(tokens){
+    let score = 0;
+    const matches = []; // {word, weight, negated}
+    let negateWindow = 0;
+
+    tokens.forEach(w => {
+      if (NEGATIONS.has(w)){
+        negateWindow = 3;
+        return;
+      }
+      if (Object.prototype.hasOwnProperty.call(LEXICON, w)){
+        let weight = LEXICON[w];
+        let negated = false;
+        if (negateWindow > 0){
+          weight = -weight;
+          negated = true;
+        }
+        score += weight;
+        matches.push({ word: w, weight, negated });
+      }
+      if (negateWindow > 0) negateWindow -= 1;
+    });
+
+    return { score, matches };
+  }
+
+  function scoresToPercents(score, matchCount){
+    // Turn a raw lexicon score into three soft percentages.
+    const intensity = Math.min(Math.abs(score) / 4, 1); // 0..1
+    let pos, neg, neu;
+    if (score > 0){
+      pos = 0.34 + intensity * 0.6;
+      neg = (1 - pos) * 0.25;
+      neu = 1 - pos - neg;
+    } else if (score < 0){
+      neg = 0.34 + intensity * 0.6;
+      pos = (1 - neg) * 0.25;
+      neu = 1 - pos - neg;
+    } else {
+      neu = matchCount > 0 ? 0.55 : 0.7;
+      pos = (1 - neu) / 2;
+      neg = (1 - neu) / 2;
+    }
+    return { pos, neu, neg };
+  }
+
+  function renderTrace(raw, tokensAll, kept, matches){
+    const step = (k, v) => `<div><span class="step-key">${k}</span> <span class="step-val">${v}</span></div>`;
+    let html = "";
+    html += step("raw &rarr;", escapeHtml(raw));
+    html += step("no urls/@/# &rarr;", escapeHtml(raw.replace(/https?:\/\/\S+|www\.\S+/g," ").replace(/[@#](\w+)/g,"$1")));
+    html += step("cleaned tokens &rarr;", tokensAll.join(" ") || "(empty)");
+    html += step("after stopwords &rarr;", kept.join(" ") || "(empty)");
+    html += step("lexicon matches &rarr;", matches.length
+      ? matches.map(m => `${m.word}${m.negated ? "*" : ""}(${m.weight > 0 ? "+" : ""}${m.weight})`).join(", ")
+      : "none");
+    document.getElementById("trace").innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function renderHighlighted(raw, matches){
+    const matchMap = {};
+    matches.forEach(m => { matchMap[m.word] = m; });
+
+    const wordPattern = /[A-Za-z']+/g;
+    const html = escapeHtml(raw).replace(wordPattern, (word) => {
+      const norm = word.toLowerCase().replace(/'/g, "");
+      const m = matchMap[norm];
+      if (!m) return word;
+      const cls = m.weight > 0 ? "tok-pos" : "tok-neg";
+      const negCls = m.negated ? " tok-negated" : "";
+      return `<span class="${cls}${negCls}">${word}</span>`;
+    });
+
+    document.getElementById("highlighted").innerHTML = html || '<span class="empty-state">No text to show.</span>';
+  }
+
+  function renderVerdict(score, pct, matchCount){
+    const label = document.getElementById("verdictLabel");
+    const sub = document.getElementById("verdictSub");
+
+    label.classList.remove("idle","positive","negative","neutral");
+
+    let text, cls;
+    if (score > 0){ text = "Positive"; cls = "positive"; }
+    else if (score < 0){ text = "Negative"; cls = "negative"; }
+    else { text = "Neutral"; cls = "neutral"; }
+
+    label.textContent = text;
+    label.classList.add(cls);
+    sub.textContent = `raw lexicon score: ${score > 0 ? "+" : ""}${score} · ${matchCount} matched word${matchCount === 1 ? "" : "s"}`;
+
+    document.getElementById("barPos").style.width = (pct.pos*100).toFixed(0) + "%";
+    document.getElementById("barNeu").style.width = (pct.neu*100).toFixed(0) + "%";
+    document.getElementById("barNeg").style.width = (pct.neg*100).toFixed(0) + "%";
+    document.getElementById("pctPos").textContent = (pct.pos*100).toFixed(0) + "%";
+    document.getElementById("pctNeu").textContent = (pct.neu*100).toFixed(0) + "%";
+    document.getElementById("pctNeg").textContent = (pct.neg*100).toFixed(0) + "%";
+  }
+
+  function analyze(){
+    const raw = document.getElementById("tweetInput").value.trim();
+    if (!raw){
+      document.getElementById("trace").innerHTML = '<div class="placeholder">Type a tweet above, then analyze it.</div>';
+      document.getElementById("highlighted").innerHTML = '<span class="empty-state">Run an analysis to see which words the lexicon flagged.</span>';
+      return;
+    }
+
+    const { tokensAll, kept } = cleanText(raw);
+    const { score, matches } = scoreTokens(kept);
+    const pct = scoresToPercents(score, matches.length);
+
+    renderTrace(raw, tokensAll, kept, matches);
+    renderHighlighted(raw, matches);
+    renderVerdict(score, pct, matches.length);
+  }
+
+  const samples = [
+    "I absolutely love this, best update ever!",
+    "This is the worst experience I've had with this app.",
+    "The package arrived today, nothing special.",
+    "Honestly not bad, pretty happy with it.",
+    "I don't think this is good at all."
+  ];
+
+  const sampleRow = document.getElementById("sampleRow");
+  samples.forEach(s => {
+    const chip = document.createElement("div");
+    chip.className = "sample-chip";
+    chip.textContent = s.length > 34 ? s.slice(0,34) + "…" : s;
+    chip.title = s;
+    chip.addEventListener("click", () => {
+      document.getElementById("tweetInput").value = s;
+      analyze();
+    });
+    sampleRow.appendChild(chip);
+  });
+
+  document.getElementById("analyzeBtn").addEventListener("click", analyze);
+  document.getElementById("tweetInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) analyze();
+  });
+
+  // Run once on load with the default example
+  analyze();
+</script>
+
+</body>
+</html>
